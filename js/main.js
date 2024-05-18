@@ -110,7 +110,7 @@ function actualizarTabla() {
       if (columna === 'Nombre completo' && typeof row[columna] === 'string') {
         const nombres = row[columna].split(' ');
         td.textContent = nombres[2];
-      } else {
+      }else {
         td.textContent = row[columna];
       }
       tr.appendChild(td);
@@ -119,7 +119,22 @@ function actualizarTabla() {
   });
 
   $(document).ready(() => {
-    $('#tablaDetalles').DataTable();
+    $('#tablaDetalles').DataTable({
+      columnDefs: [
+        {
+          targets: [5, 6, 8, 10,12],
+          render: function (data, type) {
+            var unformatted = parseFloat(data.replace(/,/g, ''));
+            if (type === 'display') {
+              return unformatted.toLocaleString('es-ES');
+            } else {
+              return unformatted;
+            }
+          },
+          type: 'num'
+        }
+      ]
+    });
   });
 
 
