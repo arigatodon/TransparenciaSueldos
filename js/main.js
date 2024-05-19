@@ -1,51 +1,61 @@
-let dataParsed;
 let chartInstance;
 let file;
+let dataParsed = [];
 
-fetch('planta.csv')
-  .then(response => response.text())
-  .then(data => {
-    dataParsed = Papa.parse(data, { header: true, dynamicTyping: true }).data;
-    // Obtener estamentos únicos
-    const estamentosUnicos = [...new Set(dataParsed.map(row => row['Estamento']))];
+document.getElementById('csvFile').addEventListener('change', function(evt) {
+  file = evt.target.files[0];
+});
 
-    // Llenar el select con los estamentos únicos
-    const filtroEstamento = document.getElementById('filtroEstamento');
-    estamentosUnicos.forEach(estamento => {
-      const option = document.createElement('option');
-      option.value = estamento;
-      option.textContent = estamento;
-      filtroEstamento.appendChild(option);
-    });
-    actualizarGrafico();
-    actualizarTabla();
-  })
-  .then(() => {
-    filtroEstamento.addEventListener('change', actualizarGrafico);
+document.getElementById('btnCargar').addEventListener('click', function() {
+  Papa.parse(file, {
+    header: true,
+    dynamicTyping: true,
+    transformHeader: header => header.trim(),
+    complete: function(results) {
+      dataParsed = formatearDatos(results.data);
+      cargarEstamentos();
+      actualizarGrafico();
+      actualizarTabla();
+      actualizarTitulo();
+    }
   });
+});
+
+function cargarEstamentos() {
+  const filtroEstamento = document.getElementById('filtroEstamento');
+  filtroEstamento.innerHTML = '<option value="">Todos los estamentos</option>';
+
+  const estamentosUnicos = [...new Set(dataParsed.map(row => row['Estamento']))];
+  estamentosUnicos.forEach(estamento => {
+    const option = document.createElement('option');
+    option.value = estamento;
+    option.textContent = estamento;
+    filtroEstamento.appendChild(option);
+  });
+
+  filtroEstamento.addEventListener('change', actualizarGrafico);
+}
 
 function actualizarGrafico() {
   const estamentoSeleccionado = document.getElementById('filtroEstamento').value;
-  let datosFiltrados = dataParsed;
-
-  if (estamentoSeleccionado) {
-    datosFiltrados = datosFiltrados.filter(row => row['Estamento'] === estamentoSeleccionado);
-  }
+  let datosFiltrados = estamentoSeleccionado 
+    ? dataParsed.filter(row => row['Estamento'] === estamentoSeleccionado) 
+    : dataParsed;
 
   const ctx = document.getElementById('myChart').getContext('2d');
 
   // Destruir el gráfico existente antes de crear uno nuevo
-  if (typeof chartInstance !== 'undefined') {
+  if (chartInstance) {
     chartInstance.destroy();
   }
 
   chartInstance = new Chart(ctx, {
     type: 'bar',
     data: {
-      labels: datosFiltrados.map(row => row['Cargo o función']),
+      labels: datosFiltrados.map(row => row['Cargo o funci�n']),
       datasets: [{
         label: 'Remuneración Total',
-        data: datosFiltrados.map(row => row['bruto']),
+        data: datosFiltrados.map(row => row['Remuneraci�n bruta mensualizada']),
         backgroundColor: 'rgba(75, 192, 192, 0.2)',
         borderColor: 'rgba(75, 192, 192, 1)',
         borderWidth: 1
@@ -62,6 +72,9 @@ function actualizarGrafico() {
 }
 
 function actualizarTabla() {
+  if ($.fn.DataTable.isDataTable('#tablaDetalles')) {
+    $('#tablaDetalles').DataTable().destroy();
+  }
   const tablaDetalles = document.getElementById('tablaDetalles');
   const tbody = tablaDetalles.getElementsByTagName('tbody')[0];
   tbody.innerHTML = '';
@@ -69,31 +82,19 @@ function actualizarTabla() {
   const columnasMostrar = [
     'Estamento',
     'Nombre completo',
-    'Cargo o función',
+    'Cargo o funci�n',
     'Grado EUS o jornada',
-    'Calificación profesional o formación',
-    // 'Región',
-    // 'Asignaciones especiales',
-    'Remuneración bruta mensualizada',
-    // 'Remuneración líquida mensualizada',
-    // 'Remuneraciones adicionales',
+    'Calificaci�n profesional o formaci�n',
+    'Remuneraci�n bruta mensualizada',
     'Monto mensual bonificaciones',
     'Derecho a horas extraordinarias',
-    // 'Montos y horas extraordinarias diurnas',
-    'Monto Horas extraordinarias Diurnas',
+    'Montos y horas extraordinarias diurnas',
     'Hrs Extraordinaria Diurnas',
-    // 'Montos y horas extraordinarias nocturnas',
-    'Monto hrs extraordinaria nocturna',
+    'Montos y horas extraordinarias nocturnas',
     'Hrs extraordinaria Nocturna',
-    // 'Montos y horas extraordinarias festivas',
-    //'Monto hrs extraordinaria Festiva',
-    //'Monto hrs extraordinaria Festiva',
-    //'Fecha de inicio dd/mm/aa',
-    //'Fecha de término dd/mm/aa',
-    // 'Observaciones',
-    'bruto'
+    'sueldo liquido'
   ];
-  // Crear la cabecera de la tabla
+
   const thead = tablaDetalles.getElementsByTagName('thead')[0];
   thead.innerHTML = '';
   const trHead = document.createElement('tr');
@@ -102,56 +103,49 @@ function actualizarTabla() {
     th.textContent = columna;
     trHead.appendChild(th);
   });
-  thead.appendChild(trHead); // Agregar la fila de encabezado al encabezado
+  thead.appendChild(trHead);
 
   dataParsed.forEach(row => {
     const tr = document.createElement('tr');
     columnasMostrar.forEach(columna => {
       const td = document.createElement('td');
-      if (columna === 'Nombre completo' && typeof row[columna] === 'string') {
-        const nombres = row[columna].split(' ');
-        td.textContent = nombres[2];
-      }else {
-        td.textContent = row[columna];
-      }
+      td.textContent = row[columna] !== undefined ? row[columna] : '';
       tr.appendChild(td);
     });
     tbody.appendChild(tr);
   });
 
-  $(document).ready(() => {
-    $('#tablaDetalles').DataTable({
-      destroy: true, // Agrega esta línea
-      columnDefs: [
-        {
-          targets: [5, 6, 8, 10,12],
-          render: function (data, type) {
-            var unformatted = parseFloat(data.replace(/,/g, ''));
-            if (type === 'display') {
-              return unformatted.toLocaleString('es-ES');
-            } else {
-              return unformatted;
-            }
-          },
-          type: 'num'
-        }
-      ]
-    });
+  $('#tablaDetalles').DataTable({
+    destroy: true
   });
 }
 
-document.getElementById('csvFile').addEventListener('change', function(evt) {
-  file = evt.target.files[0];
-});
+function actualizarTitulo() {
+  if (dataParsed.length > 0) {
+    const fecha = dataParsed[0][Object.keys(dataParsed[0])[1]] + ' ' + dataParsed[0][Object.keys(dataParsed[0])[0]];
+    document.querySelector('h1').textContent = 'Sueldos Municipalidad Cartagena ' + fecha;
+  }
+}
 
-document.getElementById('btnCargar').addEventListener('click', function() {
-  Papa.parse(file, {
-    header: true,
-    dynamicTyping: true,
-    complete: function(results) {
-      dataParsed = results.data;
-      actualizarGrafico();
-      actualizarTabla();
+function formatearDatos(datos) {
+  return datos.map(d => {
+    for (let key in d) {
+      if (typeof d[key] === 'string') {
+        let valorLimpiado = d[key].replace(/\$|\.|,/g, '').trim();
+        d[key] = isNaN(valorLimpiado) ? d[key] : Number(valorLimpiado);
+      }
     }
+    return d;
   });
-});
+}
+
+// Fetch inicial para cargar el archivo por defecto
+fetch('planta.csv')
+  .then(response => response.text())
+  .then(data => {
+    dataParsed = formatearDatos(Papa.parse(data, { header: true, dynamicTyping: true }).data);
+    cargarEstamentos();
+    actualizarGrafico();
+    actualizarTabla();
+    actualizarTitulo();
+  });
