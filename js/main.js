@@ -1,5 +1,6 @@
 let dataParsed;
 let chartInstance;
+let file;
 
 fetch('planta.csv')
   .then(response => response.text())
@@ -120,6 +121,7 @@ function actualizarTabla() {
 
   $(document).ready(() => {
     $('#tablaDetalles').DataTable({
+      destroy: true, // Agrega esta línea
       columnDefs: [
         {
           targets: [5, 6, 8, 10,12],
@@ -136,6 +138,20 @@ function actualizarTabla() {
       ]
     });
   });
-
-
 }
+
+document.getElementById('csvFile').addEventListener('change', function(evt) {
+  file = evt.target.files[0];
+});
+
+document.getElementById('btnCargar').addEventListener('click', function() {
+  Papa.parse(file, {
+    header: true,
+    dynamicTyping: true,
+    complete: function(results) {
+      dataParsed = results.data;
+      actualizarGrafico();
+      actualizarTabla();
+    }
+  });
+});
