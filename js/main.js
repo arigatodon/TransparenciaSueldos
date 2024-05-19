@@ -17,6 +17,7 @@ document.getElementById('btnCargar').addEventListener('click', function() {
       actualizarGrafico();
       actualizarTabla();
       actualizarTitulo();
+      window.scrollTo(0, 0);
     }
   });
 });
@@ -91,7 +92,7 @@ function actualizarTabla() {
     'Montos y horas extraordinarias diurnas',
     'Hrs Extraordinaria Diurnas',
     'Montos y horas extraordinarias nocturnas',
-    'Hrs extraordinaria Nocturna',
+    'Hrs Extraordinaria Nocturna',
     'sueldo liquido'
   ];
 
@@ -129,12 +130,36 @@ function actualizarTitulo() {
 
 function formatearDatos(datos) {
   return datos.map(d => {
+    // Formatear el nombre
+    if (d['Nombre completo']) {
+      let partesNombre = d['Nombre completo'].split(" ");
+      d['Nombre completo'] = partesNombre[2] || '';
+    }
+
+    if (d['Montos y horas extraordinarias diurnas']) {
+      let partesCampo = d['Montos y horas extraordinarias diurnas'].split(" : ");
+      let monto = partesCampo[0] ? parseInt(partesCampo[0].replace('$', '').replace('.', '').trim(),10) : 0;
+      d['Montos y horas extraordinarias diurnas'] = isNaN(monto) ? 0 : monto;
+      let horas = partesCampo[1] ? parseInt(partesCampo[1].replace('hrs', '').trim(),10) : 0;
+      d['Hrs Extraordinaria Diurnas'] = isNaN(horas) ? 0 : horas;
+    }
+    
+    if (d['Montos y horas extraordinarias nocturnas']) {
+      let partesCampo = d['Montos y horas extraordinarias nocturnas'].split(" : ");
+      let monto = partesCampo[0] ? parseInt(partesCampo[0].replace('$', '').replace('.', '').trim(),10) : 0;
+      d['Montos y horas extraordinarias nocturnas'] = isNaN(monto) ? 0 : monto;
+      let horas = partesCampo[1] ? parseInt(partesCampo[1].replace('hrs', '').trim(),10) : 0;
+      d['Hrs Extraordinaria Nocturna'] = isNaN(horas) ? 0 : horas;
+    }
+    
+    console.log(d['Montos y horas extraordinarias nocturnas'])
     for (let key in d) {
       if (typeof d[key] === 'string') {
         let valorLimpiado = d[key].replace(/\$|\.|,/g, '').trim();
         d[key] = isNaN(valorLimpiado) ? d[key] : Number(valorLimpiado);
       }
     }
+
     return d;
   });
 }
